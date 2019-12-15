@@ -4,9 +4,7 @@
 /* Error codes */
 
 extern int AM_errno;
-
-#define AME_OK 0
-#define AME_EOF -1
+extern int BF_errno;
 
 #define EQUAL 1
 #define NOT_EQUAL 2
@@ -14,6 +12,56 @@ extern int AM_errno;
 #define GREATER_THAN 4
 #define LESS_THAN_OR_EQUAL 5
 #define GREATER_THAN_OR_EQUAL 6
+
+// OUR CODE STARTS HERE
+#define B_PLUS_FILE_INDICATOR_TYPE char *
+#define B_PLUS_FILE_INDICATOR "B+"
+#define B_PLUS_FILE_INDICATOR_SIZE sizeof(B_PLUS_FILE_INDICATOR)
+#define B_PLUS_FILE_INDICATOR_COMPARE(indicator) \
+    ( strcmp(B_PLUS_FILE_INDICATOR, indicator) == 0 )
+
+#define AME_OK 0
+#define AME_EOF -1                      /* There is not other value that satisfies the scan */
+#define AME_OPEN_FILES_LIMIT_ERROR -2   /* There are already MAX_OPEN_FILES files opened */
+#define AME_TYPE_ERROR -3               /* Not a B-Plus-File */
+#define AME_INVALID_FILE_ERROR -4       /* File is not open */
+#define AME_OPEN_SCANS_LIMIT_ERROR -5   /* There are already MAX_OPEN_SCANS scans opened */
+#define AME_OPENED_SCANS -6             /* At least one scan is opened for a file */
+#define AME_OPENED_FILE -7              /* File is opened */
+#define AME_INVALID_SCAN_ERROR -8       /* Scan is not open */
+#define AME_BF_ERROR -9                 /* Error in the bf part */
+#define AME_UNABLE_TO_DELETE_FILE -10   /* Unable to delete file with remove() */
+
+typedef struct FilesInfo
+{
+	char* fileName;
+	int fileId;
+    int openedScans;
+} FilesInfo;
+
+#define MAX_OPEN_FILES 20
+typedef struct FilesMap
+{
+	FilesInfo filesInfo[MAX_OPEN_FILES];
+	int filesCounter;
+
+}FilesMap;
+
+typedef struct ScansInfo
+{
+    int fileIndex;
+    int blockId;
+    int Operator;
+    int foundCounter;
+} ScansInfo;
+
+#define MAX_OPEN_SCANS 20
+typedef struct ScansMap
+{
+    ScansInfo scansInfo[MAX_OPEN_SCANS];
+	int scansCounter;
+}ScansMap;
+// OUR CODE ENDS HERE
 
 void AM_Init( void );
 

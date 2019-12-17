@@ -14,6 +14,19 @@ extern int BF_errno;
 #define GREATER_THAN_OR_EQUAL 6
 
 // OUR CODE STARTS HERE
+// typedef struct AM_Index_Information {
+//     char indicator ='i';
+//     int numOfKeys;
+// } AM_Index_Information;
+// #define AM_INDEX_BLOCK_INFORMATION_SIZE sizeof(AM_Index_Information)
+
+// typedef struct AM_Data_Information {
+//     char indicator = 'd';
+//     int numOfRecords;
+//     int nextBlock;
+// } AM_Data_Information;
+// #define AM_DATA_BLOCK_INFORMATION_SIZE sizeof(AM_Data_Information)
+
 #define B_PLUS_FILE_INDICATOR_TYPE char *
 #define B_PLUS_FILE_INDICATOR "B+"
 #define B_PLUS_FILE_INDICATOR_SIZE sizeof(B_PLUS_FILE_INDICATOR)
@@ -35,8 +48,15 @@ extern int BF_errno;
 typedef struct FilesInfo
 {
 	char* fileName;
-	int fileId;
+    char attrType1;
+    int attrLength1;
+    int attrLength2;
+    int recordLength;
+	  int fileId;
     int openedScans;
+    int root;
+    int maxKeysPerBlock;
+    int maxRecordsPerBlock;
 } FilesInfo;
 
 #define MAX_OPEN_FILES 20

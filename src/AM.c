@@ -19,6 +19,16 @@ ScansMap scansMap;
   }                         \
 }
 
+#define CALL_BF_BLOCK_INIT(variable)    \
+  BF_Block *variable;                      \
+  BF_Block_Init(&variable);                \
+
+#define CALL_BF_BLOCK_DESTROY(variable) \
+  CALL_BF(BF_UnpinBlock(variable))         \
+  BF_Block_Destroy(&variable);             \
+
+
+
 int compare(FilesInfo fileInfo, void *value1, void *value2) {
     // Check data type to compare
     char dataType = fileInfo.attrType1;
@@ -39,8 +49,7 @@ int Create_Data_Block(int fd, int nextBlock) {
   char indicator = 'd';                                         
   int numOfRecords = 0;
   int numOfBlock;                                            
-  BF_Block *block;                                               
-  BF_Block_Init(&block);                                         
+  CALL_BF_BLOCK_INIT(block)                                        
   CALL_BF(BF_AllocateBlock(fd, block))                           
   char *data = BF_Block_GetData(block);                      
   memcpy(data, &indicator, sizeof(char));                   
@@ -49,19 +58,18 @@ int Create_Data_Block(int fd, int nextBlock) {
 
   CALL_BF(BF_GetBlockCounter(fd, &numOfBlock))     
   BF_Block_SetDirty(block);                                      
-  CALL_BF(BF_UnpinBlock(block))     
-  BF_Block_Destroy(&block);
+  CALL_BF_BLOCK_DESTROY(block)
   numOfBlock--;
   return  numOfBlock;                        
 }
+int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return returnPair);
 
 int Create_Index_Block(int fd) {
 
   char indicator = 'i';                                         
   int numOfKeys = 0;
   int numOfBlock;                                            
-  BF_Block *block;                                               
-  BF_Block_Init(&block);                                         
+  CALL_BF_BLOCK_INIT(block)                                        
   CALL_BF(BF_AllocateBlock(fd, block))                           
   char *data = BF_Block_GetData(block);                      
   memcpy(data, &indicator, sizeof(char));                   
@@ -69,8 +77,7 @@ int Create_Index_Block(int fd) {
 
   CALL_BF(BF_GetBlockCounter(fd, &numOfBlock))     
   BF_Block_SetDirty(block);                                      
-  CALL_BF(BF_UnpinBlock(block))     
-  BF_Block_Destroy(&block);
+  CALL_BF_BLOCK_DESTROY(block)
   numOfBlock--;
   return  numOfBlock;                        
 }
@@ -141,21 +148,18 @@ printf("+AM_CreateIndex: just got called.\n");
   int fd;
   CALL_BF(BF_OpenFile(fileName, &fd))
   // Allocate first Block
-  BF_Block *block;
-  BF_Block_Init(&block);
+  CALL_BF_BLOCK_INIT(block)
   CALL_BF(BF_AllocateBlock(fd, block))
   // Initialize first Block of the B-Plus file
   B_PLUS_FILE_INDICATOR_TYPE BplusFileIndicator = B_PLUS_FILE_INDICATOR;
   char *data = BF_Block_GetData(block);
   memcpy(data, &BplusFileIndicator, B_PLUS_FILE_INDICATOR_SIZE);
-  memcpy(data+B_PLUS_FILE_INDICATOR_SIZE, &attrType1, sizeof(char));                                                    /* size of first attribute */
-  memcpy(data+B_PLUS_FILE_INDICATOR_SIZE+sizeof(char), &attrLength1, sizeof(int));                                      /* Length of first attribute */
-  memcpy(data+B_PLUS_FILE_INDICATOR_SIZE+sizeof(char)+sizeof(int), &attrType2, sizeof(char));                           /* size of second attribute */
-  memcpy(data+B_PLUS_FILE_INDICATOR_SIZE+2*sizeof(char)+sizeof(int), &attrLength2, sizeof(int));                        /* Length of second attribute */
-
+  memcpy(data+B_PLUS_FILE_INDICATOR_SIZE, &attrType1, sizeof(char));                                                     /* size of first attribute */
+  memcpy(data+B_PLUS_FILE_INDICATOR_SIZE+sizeof(char), &attrLength1, sizeof(int));                                       /* Length of first attribute */
+  memcpy(data+B_PLUS_FILE_INDICATOR_SIZE+sizeof(char)+sizeof(int), &attrType2, sizeof(char));                            /* size of second attribute */
+  memcpy(data+B_PLUS_FILE_INDICATOR_SIZE+2*sizeof(char)+sizeof(int), &attrLength2, sizeof(int));                         /* Length of second attribute */
   int rootBlockNum = Create_Index_Block(fd);
-
-  memcpy(data+B_PLUS_FILE_INDICATOR_SIZE+2*sizeof(char)+2*sizeof(int), &rootBlockNum, sizeof(int));                              /* Root of B+ Tree */
+  memcpy(data+B_PLUS_FILE_INDICATOR_SIZE+2*sizeof(char)+2*sizeof(int), &rootBlockNum, sizeof(int));                      /* Root of B+ Tree */
   int maxKeysPerBlock = (BF_BLOCK_SIZE - sizeof(char) - sizeof(int)) / (attrLength1 + sizeof(int));
   if (BF_BLOCK_SIZE - sizeof(char) - sizeof(int) - ((attrLength1 + sizeof(int)) * maxKeysPerBlock) < sizeof(int))
     maxKeysPerBlock--;
@@ -163,9 +167,8 @@ printf("+AM_CreateIndex: just got called.\n");
   int maxRecordsPerBlock = (BF_BLOCK_SIZE - sizeof(char) - 2*sizeof(int)) / (attrLength1 + attrLength2);
   memcpy(data+B_PLUS_FILE_INDICATOR_SIZE+2*sizeof(char)+4*sizeof(int), &maxRecordsPerBlock, sizeof(int));                /* maximum records per data block */  
   BF_Block_SetDirty(block);
-  CALL_BF(BF_UnpinBlock(block))
+  CALL_BF_BLOCK_DESTROY(block)
   BF_CloseFile(fd);
-  BF_Block_Destroy(&block);
   return AME_OK;
 }
 
@@ -203,8 +206,7 @@ printf("+AM_OpenIndex: just got called.\n");
   for (fileIndex=0; filesMap.filesInfo[fileIndex].fileId != -1; fileIndex++);
   CALL_BF(BF_OpenFile(fileName, &(filesMap.filesInfo[fileIndex].fileId)))
   // Check if the file is B-Plus-File
-  BF_Block *block;
-  BF_Block_Init(&block);
+  CALL_BF_BLOCK_INIT(block)
   CALL_BF(BF_GetBlock(filesMap.filesInfo[fileIndex].fileId, 0, block))
   B_PLUS_FILE_INDICATOR_TYPE indicator;
   char* data = BF_Block_GetData(block);
@@ -232,8 +234,7 @@ printf("+AM_OpenIndex: just got called.\n");
   // Increase the filesCounter
   filesMap.filesCounter++;
 
-  CALL_BF(BF_UnpinBlock(block));
-  BF_Block_Destroy(&block);
+  CALL_BF_BLOCK_DESTROY(block)
   return fileIndex;
 }
 
@@ -269,8 +270,7 @@ printf("+AM_InsertEntry: just got called.\n");
     AM_errno = AME_INVALID_FILE_ERROR;
     return AME_INVALID_FILE_ERROR;
   }
-  BF_Block *root;
-  BF_Block_Init(&root);
+  CALL_BF_BLOCK_INIT(root)
   CALL_BF(BF_GetBlock(filesMap.filesInfo[fileDesc].fileId, filesMap.filesInfo[fileDesc].root, root))
   char *data = BF_Block_GetData(root);
   int numOfKeys;
@@ -283,18 +283,17 @@ printf("+AM_InsertEntry: just got called.\n");
     memcpy(data+sizeof(char)+sizeof(int), &leftBlockNum, sizeof(int));
     memcpy(data+sizeof(char)+2*sizeof(int), value1, filesMap.filesInfo[fileDesc].attrLength1);
     memcpy(data+sizeof(char)+2*sizeof(int)+filesMap.filesInfo[fileDesc].attrLength1, &rightBlockNum, sizeof(int));
+    BF_Block_SetDirty(root);
   }
-  //CALL_BF(BF_UnpinBlock(root))
 
-  //int ... = insertEntry(filesMap.filesInfo[fileDesc], filesMap.filesInfo[fileDesc].root, value1, value2);
+  InsertEntry_Return returnPair;
+  insertEntry(filesMap.filesInfo[fileDesc], filesMap.filesInfo[fileDesc].root, value1, value2, returnPair);
 
   //?...
   //? EDW ISWS PETHANOYME
   //?
 
-  BF_Block_SetDirty(root);                                      
-  CALL_BF(BF_UnpinBlock(root))     
-  BF_Block_Destroy(&root);
+  CALL_BF_BLOCK_DESTROY(root)
   return AME_OK;
 }
 
@@ -422,9 +421,8 @@ void AM_Close() {
   printf("+AM_Close: just got called.\n");
 }
 
-int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2) {
-    BF_Block *block;
-    BF_Block_Init(&block);
+int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return returnPair) {
+    CALL_BF_BLOCK_INIT(block)
     CALL_BF(BF_GetBlock(fileInfo.fileId, treeNode, block))
     char *data = BF_Block_GetData(block);
     CALL_BF(BF_UnpinBlock(block))
@@ -454,8 +452,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2) {
         memcpy(&numOfRecords, data+sizeof(char), sizeof(int));
 
         if ( numOfRecords >= fileInfo.maxRecordsPerBlock ) {
-            BF_Block *newblock;
-            BF_Block_Init(&block);
+            CALL_BF_BLOCK_INIT(newblock)
             CALL_BF(BF_AllocateBlock(fileInfo.fileId, newblock))
             char *newdata = BF_Block_GetData(newblock);
             char indicator = 'd';
@@ -496,6 +493,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2) {
     } else {
         printf("gamh8hkameeee \n\n");
     }
+    CALL_BF_BLOCK_DESTROY(block)
 }
 
 

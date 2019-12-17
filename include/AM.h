@@ -14,6 +14,13 @@ extern int BF_errno;
 #define GREATER_THAN_OR_EQUAL 6
 
 // OUR CODE STARTS HERE
+
+typedef struct InsertEntry_Return
+{
+    int key;
+    int blockPointer;
+} InsertEntry_Return;
+
 // typedef struct AM_Index_Information {
 //     char indicator ='i';
 //     int numOfKeys;

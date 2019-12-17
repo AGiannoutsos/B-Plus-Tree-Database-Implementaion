@@ -43,6 +43,7 @@ int compare(FilesInfo fileInfo, void *value1, void *value2) {
         return *((int*)value1) - *((int*)value1);
     }
 }
+int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return returnPair);
 
 int Create_Data_Block(int fd, int nextBlock) {
 
@@ -62,7 +63,6 @@ int Create_Data_Block(int fd, int nextBlock) {
   numOfBlock--;
   return  numOfBlock;                        
 }
-int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return returnPair);
 
 int Create_Index_Block(int fd) {
 
@@ -432,7 +432,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
     // Check if block is index ir data block
     if (indicator == 'i') {
         // Scan the file and get the ideal pointer to dive in
-    
+        
 
 
 

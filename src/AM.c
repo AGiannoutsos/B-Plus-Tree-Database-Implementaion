@@ -19,11 +19,11 @@ ScansMap scansMap;
   }                         \
 }
 
-#define CALL_BF_BLOCK_INIT(variable)    \
+#define CALL_BF_BLOCK_INIT(variable)       \
   BF_Block *variable;                      \
   BF_Block_Init(&variable);                \
 
-#define CALL_BF_BLOCK_DESTROY(variable) \
+#define CALL_BF_BLOCK_DESTROY(variable)    \
   CALL_BF(BF_UnpinBlock(variable))         \
   BF_Block_Destroy(&variable);             \
 
@@ -36,11 +36,11 @@ int compare(FilesInfo fileInfo, void *value1, void *value2) {
     if (dataType == 'c'){
         return strcmp((char*) value1, (char*) value2);
     } else if (dataType == 'f') {
-        if (*((float*)value1) > *((float*)value1)) return 1;
-        else if (*((float*)value1) == *((float*)value1)) return 0;
+        if (*((float*)value1) > *((float*)value2)) return 1;
+        else if (*((float*)value1) == *((float*)value2)) return 0;
         else return -1;
     } else{
-        return *((int*)value1) - *((int*)value1);
+        return (*(int*)value1 - *(int*)value2);
     }
 }
 int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return returnPair);
@@ -109,15 +109,15 @@ printf("+AM_Init: just got called.\n");
 // Test Scan Closes (close already closed scan, or not existed scan, close multiple scans)
 // Combine the above and destroy or close files that have opened scans, or have terminated at least one scan
 
-   AM_CreateIndex("mytest.db", 'i', 4, 'c', 12);
+   AM_CreateIndex("mytest.db", 'i', 4, 'c', 5);
    AM_PrintError(NULL);
-   AM_CreateIndex("mytest.db", 'i', 4, 'c', 12);
-   AM_PrintError(NULL);
-   AM_DestroyIndex("mytest.db");
+   AM_CreateIndex("mytest.db", 'i', 4, 'c', 5);
    AM_PrintError(NULL);
    AM_DestroyIndex("mytest.db");
    AM_PrintError(NULL);
-   AM_CreateIndex("mytest.db", 'f', 4, 'c', 12);
+   AM_DestroyIndex("mytest.db");
+   AM_PrintError(NULL);
+   AM_CreateIndex("mytest.db", 'i', 4, 'c', 5);
    AM_PrintError(NULL);
    int index = -324;
    index = AM_OpenIndex("mytest.db");
@@ -132,9 +132,32 @@ printf("+AM_Init: just got called.\n");
    AM_CloseIndex(index);
    AM_PrintError(NULL);
    printf("index in filesMap is:%d (Counter = %d).\n", index, filesMap.filesCounter);
-   int key = 3;
-   AM_InsertEntry(0, &key, "ok");
+   int key = 66;
+   AM_InsertEntry(0, &key, "okok");
    AM_PrintError(NULL);
+   key = 62;
+   AM_InsertEntry(0, &key, "okok");
+   AM_PrintError(NULL);
+  //test the 3 first blocks printing
+  BF_Block *block;
+  BF_Block_Init(&block);
+  int fd = filesMap.filesInfo[0].fileId;
+  char *data;
+  int *intdata;
+  for (int i = 1; i < 4; i++){
+    BF_GetBlock(fd,i,block);
+    data = BF_Block_GetData(block);
+    printf("block-> %d dataa-> %c\n",i,data[0]);
+    intdata = data;
+    for (int j = 1; j < 100; j++){
+      printf("kcolb-> %d data-> %c\n",i,data[j]);
+    }
+    printf("-----\n");
+
+  }
+  
+
+
    printf("++Test Finished\n---------------------------\n");
 }
 
@@ -283,6 +306,8 @@ printf("+AM_InsertEntry: just got called.\n");
     memcpy(data+sizeof(char)+sizeof(int), &leftBlockNum, sizeof(int));
     memcpy(data+sizeof(char)+2*sizeof(int), value1, filesMap.filesInfo[fileDesc].attrLength1);
     memcpy(data+sizeof(char)+2*sizeof(int)+filesMap.filesInfo[fileDesc].attrLength1, &rightBlockNum, sizeof(int));
+    numOfKeys = 1;
+    memcpy(data+sizeof(char), &numOfKeys, sizeof(int));
     BF_Block_SetDirty(root);
   }
 
@@ -422,31 +447,57 @@ void AM_Close() {
 }
 
 int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return returnPair) {
+    // Recursive function to insert entry in the treeNode
+    // Get the block of the treeNode
     CALL_BF_BLOCK_INIT(block)
     CALL_BF(BF_GetBlock(fileInfo.fileId, treeNode, block))
     char *data = BF_Block_GetData(block);
+    // Unpin the block to minimize the count of the opened block(usefull for deep recursive insertings)
     CALL_BF(BF_UnpinBlock(block))
+
+    int keyLength = fileInfo.attrLength1;
+    int recordLength = fileInfo.recordLength;
+    int offset;
+    int i;
+    void *key = malloc(keyLength);
 
     char indicator;
     memcpy(&indicator, data, sizeof(char));
-    // Check if block is index ir data block
+    // Check the type of block
     if (indicator == 'i') {
-        // Scan the file and get the ideal pointer to dive in
-        
-
+        // Block is index block
+        int numOfKeys;
+        memcpy(&numOfKeys, data+sizeof(char), sizeof(int));
+        int flag = 0;
+        int nextNode;
+        offset = sizeof(char)+2*sizeof(int);
+        // Search the right position for the record is going to get inserted. And insert it
+        for(i=0; i<numOfKeys; i++) {
+            memcpy(key,  data+offset, keyLength);
+            // Access all the keys until you find the correct position for the record or the end of the block
+            if (compare(fileInfo, key, value1) > 0) {
+                memcpy(&nextNode, data+offset-sizeof(int), sizeof(int));
+                insertEntry(fileInfo, nextNode, value1, value2, returnPair);
+                flag = 1;
+                break;
+            }
+            offset += keyLength+sizeof(int);
+        }
+        if (flag == 0) {
+//printf("trust me dady offset =%d\n", offset);
+            memcpy(&nextNode, data+offset-sizeof(int), sizeof(int)); // works with -keyLength
+            insertEntry(fileInfo, nextNode, value1, value2, returnPair);
+        }
 
 
 
 
     } else if (indicator == 'd') {
+        // Block in data block
+        int numOfRecords;
     
         // Scan data to place with sorted order
         // Buffer to copy the records
-        void *key;
-        int keyLength = fileInfo.attrLength1;
-        int recordLength = fileInfo.recordLength;
-        int numOfRecords;
-        int offset;
         int nextBlock;
         memcpy(&nextBlock, data+sizeof(char)+sizeof(int), sizeof(int));
         memcpy(&numOfRecords, data+sizeof(char), sizeof(int));
@@ -464,13 +515,13 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
             memcpy(newdata+sizeof(char)+2*sizeof(int), data+sizeof(char)+2*sizeof(int)+(numOfRecords - newNumOfRecords)*recordLength, newNumOfRecords*recordLength);
             numOfRecords = numOfRecords - newNumOfRecords;
             memcpy(data+sizeof(char), &numOfRecords, sizeof(int));
-
+            BF_Block_SetDirty(newblock);
+            CALL_BF_BLOCK_DESTROY(newblock)
         } else {
-            int i;
             int flag = 0;
+            offset = sizeof(char)+2*sizeof(int);
             for(i=0; i<numOfRecords; i++) {
-                offset = sizeof(char)+2*sizeof(int)+i*recordLength;
-                memcpy(key,  data+offset, keyLength);
+                memcpy(key, data+offset, keyLength);
                 // If value on record less that value to insert memset the following records
                 if (compare(fileInfo, key, value1) > 0) {
                     memmove(data+offset+recordLength, data+offset, (numOfRecords-i)*recordLength);
@@ -481,19 +532,22 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
                     flag = 1;
                     break;
                 }
+                offset += recordLength;
             }
             if(flag == 0){
-                memcpy(data+numOfRecords*recordLength, value1, fileInfo.attrLength1);
-                memcpy(data+numOfRecords*recordLength+offset+fileInfo.attrLength1, value2, fileInfo.attrLength2);
+                memcpy(data+offset, value1, keyLength);
+                memcpy(data+offset+keyLength, value2, fileInfo.attrLength2);
                 numOfRecords++;
                 memcpy(data+sizeof(char), &numOfRecords, sizeof(int));
             }
         }
-
+        BF_Block_SetDirty(block);
     } else {
         printf("gamh8hkameeee \n\n");
     }
     CALL_BF_BLOCK_DESTROY(block)
+    free(key);
+    return AME_OK;
 }
 
 

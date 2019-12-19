@@ -135,7 +135,9 @@ printf("+AM_Init: just got called.\n");
    int key = 66;
    AM_InsertEntry(0, &key, "okok");
    AM_PrintError(NULL);
-   key = 62;
+   key = 65;
+   AM_InsertEntry(0, &key, "okok");
+   AM_InsertEntry(0, &key, "okok");
    AM_InsertEntry(0, &key, "okok");
    AM_PrintError(NULL);
   //test the 3 first blocks printing
@@ -484,7 +486,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
             offset += keyLength+sizeof(int);
         }
         if (flag == 0) {
-//printf("trust me dady offset =%d\n", offset);
+//printf("trust me dady offset =%d\n", offset);AM_InsertEntry(0, &key, "okok");
             memcpy(&nextNode, data+offset-sizeof(int), sizeof(int)); // works with -keyLength
             insertEntry(fileInfo, nextNode, value1, value2, returnPair);
         }

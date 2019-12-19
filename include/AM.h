@@ -56,6 +56,7 @@ typedef struct FilesInfo
 {
 	char* fileName;
     char attrType1;
+    char attrType2;
     int attrLength1;
     int attrLength2;
     int recordLength;

@@ -5,4 +5,7 @@
 #define FLOAT 'f'
 #define STRING 'c'
 
+#define INDEX_BLOCK_TYPE 'i'
+#define DATA_BLOCK_TYPE 'd'
+
 #endif /* DEFN_H_ */

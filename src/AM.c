@@ -5,6 +5,10 @@
 #include "AM.h"
 #include "bf.h"
 #include "defn.h"
+#include "OurFunctions.h"
+
+int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return *returnPair);
+int scanForNextNode(FilesInfo fileInfo, int blockNum, void *value1);
 
 int AM_errno = AME_OK;
 int BF_errno = BF_OK;
@@ -43,7 +47,6 @@ int compare(FilesInfo fileInfo, void *value1, void *value2) {
         return (*(int*)value1 - *(int*)value2);
     }
 }
-int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return *returnPair);
 
 int Create_Data_Block(int fd, int numOfRecords, int nextBlock) {
 
@@ -458,110 +461,6 @@ void AM_Close() {
   printf("+AM_Close: just got called.\n");
 }
 
-void *getDBlockData(FilesInfo fileInfo, char * data, int i){
-  int keyLength     = fileInfo.attrLength1;
-  int recordLength  = fileInfo.recordLength;
-  int offset        = sizeof(char)+2*sizeof(int);
-  int attrType1     = fileInfo.attrType1;
-  // void *key;
-  offset += i*recordLength;
-  //memcpy(key, data+offset, keyLength);
-
-  if (attrType1 == 'c'){
-        return (void*)data+offset;
-    } else if (attrType1 == 'f') {
-        return (void*)data+offset;
-    } else{
-        // printf("return voiddddddd***** %d \n\n",*(int*)data+offset);
-        return (void*)data+offset;
-    }
-}
-
-void *getIBlockData(FilesInfo fileInfo, char * data, int i){
-  int keyLength     = fileInfo.attrLength1;
-  int recordLength  = fileInfo.recordLength;
-  int offset        = sizeof(char)+2*sizeof(int);
-  int attrType1     = fileInfo.attrType1;
-
-  offset += i*(keyLength+sizeof(int));
-
-  if (attrType1 == 'c'){
-        return (void*)data+offset;
-    } else if (attrType1 == 'f') {
-        return (void*)data+offset;
-    } else{
-        return (void*)data+offset;
-    }
-}
-
-void writeDBlockData(FilesInfo fileInfo, char *data, int i, void *value1, void *value2){
-
-  int va1Length     = fileInfo.attrLength1;
-  int va2Length     = fileInfo.attrLength2;
-  int recordLength  = fileInfo.recordLength;
-  int offset        = sizeof(char)+2*sizeof(int);
-  int numOfRecords;
-  int strlenAttr1   = va1Length;
-  int strlenAttr2   = va2Length;
-  offset += i*recordLength;
-  memcpy(&numOfRecords, data+sizeof(char), sizeof(int));
-  if(fileInfo.attrType1 == STRING)
-    strlenAttr1 = strlen(value1);
-  if(fileInfo.attrType2 == STRING)
-    strlenAttr2 = strlen(value2);
-  
-  memmove(data+offset+recordLength, data+offset, (numOfRecords-i)*recordLength);  //move data to write in that position
-  memset(data+offset, 0, recordLength); //flush the moved data space
-  //write the new data
-  memcpy(data+offset, value1, strlenAttr1);
-  memcpy(data+offset+va1Length, value2, strlenAttr2);
-
-  numOfRecords++;     //update the counter
-  memcpy(data+sizeof(char), &numOfRecords, sizeof(int));
-  // printf("sizeeee ooof %s ----->>> %d\n\n",(char*)value2,strlenAttr2);
-}
-
-int scanForNextNode(FilesInfo fileInfo, int blockNum, void *value1){
-  // Block is index block
-  // Get the block of the treeNode
-  CALL_BF_BLOCK_INIT(block)
-  int numOfKeys;
-  int flag = 0;
-  int nextNode;
-  int i = 0;
-  int offset;
-  int keyLength = fileInfo.attrLength1;
-  void *key     = malloc(keyLength);
-  void *prevkey = malloc(keyLength);
-
-  CALL_BF(BF_GetBlock(fileInfo.fileId, blockNum, block))
-  char *data = BF_Block_GetData(block);
-  memcpy(&numOfKeys, data+sizeof(char), sizeof(int));
-
-  offset = sizeof(char)+2*sizeof(int);
-  // Search the right position for the record is going to get inserted. And insert it
-  for(i=0; i<numOfKeys; i++) {
-      memcpy(key,  getIBlockData(fileInfo, data, i), keyLength);
-      // Access all the keys until you find the correct position for the record or the end of the block
-      if (compare(fileInfo, key, value1) > 0) {
-          memcpy(&nextNode, data+offset-sizeof(int), sizeof(int));
-          // insertEntry(fileInfo, nextNode, value1, value2, returnPair);
-          flag = 1;
-          break;
-      }
-      offset += keyLength+sizeof(int);
-  }
-  if (flag == 0) {
-      //printf("trust me dady offset =%d\n", offset);AM_InsertEntry(0, &key, "okok");
-      memcpy(&nextNode, getIBlockData(fileInfo, data, i)-sizeof(int), sizeof(int)); // works with -keyLength
-      // insertEntry(fileInfo, nextNode, value1, value2, returnPair);
-  }
-  free(key);
-  free(prevkey);
-  CALL_BF_BLOCK_DESTROY(block)
-  return nextNode;
-}
-
 char *writeToBuffer(FilesInfo fileInfo,  char *buffer, char *data, void *value1, void *value2){
   // write record to buffer
   int maxNumOfRecords = fileInfo.maxRecordsPerBlock;
@@ -614,20 +513,39 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
     // Check the type of block
     if (indicator == 'i') {
         // Block is index block
+        int numOfKeys;
+        memcpy(&numOfKeys, data+sizeof(char), sizeof(int));
         int nextNode = scanForNextNode(fileInfo, treeNode, value1);
         InsertEntry_Return newReturnPair = {value1, treeNode};
         insertEntry(fileInfo, nextNode, value1, value2, &newReturnPair);
 
         if (newReturnPair.blockPointer != nextNode) {
-            // memcpy(&(returnPair->key), getDBlockData(fileInfo, newdata, 0), sizeof(int));
-            // returnPair->blockPointer = newBlockNum;
+            
+            // Find the point to cut the block in half 2 3 3 3 3 
+            int cutPoint = (numOfKeys+1)/2;
+            memcpy(key, getDBlockData(fileInfo, data, cutPoint), keyLength);
+            memcpy(prevkey, getDBlockData(fileInfo, data, cutPoint-1), keyLength);
+            while ( compare(fileInfo, key, prevkey) == 0){
+              cutPoint--;
+              memset(key,0,keyLength);  // Flush the key memory
+              memset(prevkey,0,keyLength);
+              memcpy(key, getDBlockData(fileInfo, data, cutPoint), keyLength);
+              memcpy(prevkey, getDBlockData(fileInfo, data, cutPoint-1), keyLength);
+            }
+            int newNumOfRecords = numOfKeys - cutPoint;
+
+            // Allocate and write the new index
+            // CALL_BF_BLOCK_INIT(newblock)
+            // int newBlockNum = Create_Data_Block(fileInfo.fileId, newNumOfRecords, nextBlock);
+            // CALL_BF(BF_GetBlock(fileInfo.fileId, newBlockNum, newblock))
+            // char *newdata = BF_Block_GetData(newblock);
+
+            // memcpy(newdata+sizeof(char)+2*sizeof(int), data+sizeof(char)+2*sizeof(int)+(numOfKeys - newNumOfRecords)*recordLength, newNumOfRecords*recordLength);
         }
 
     } else if (indicator == 'd') {
         // Block in data block
-        int numOfRecords;
-        int newBlockNum;
-        int newNumOfRecords;
+        int numOfRecords, newNumOfRecords;
         // Scan data to place with sorted order
         // Buffer to copy the records
         int nextBlock;
@@ -656,7 +574,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
 
             // Allocate block
             CALL_BF_BLOCK_INIT(newblock)
-            newBlockNum = Create_Data_Block(fileInfo.fileId, newNumOfRecords, nextBlock);
+            int newBlockNum = Create_Data_Block(fileInfo.fileId, newNumOfRecords, nextBlock);
             CALL_BF(BF_GetBlock(fileInfo.fileId, newBlockNum, newblock))
             char *newdata = BF_Block_GetData(newblock);
 
@@ -702,22 +620,43 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
     return AME_OK;
 }
 
+int scanForNextNode(FilesInfo fileInfo, int blockNum, void *value1){
+  // Block is index block
+  // Get the block of the treeNode
+  CALL_BF_BLOCK_INIT(block)
+  int numOfKeys;
+  int flag = 0;
+  int nextNode;
+  int i = 0;
+  int offset;
+  int keyLength = fileInfo.attrLength1;
+  void *key     = malloc(keyLength);
+  void *prevkey = malloc(keyLength);
 
+  CALL_BF(BF_GetBlock(fileInfo.fileId, blockNum, block))
+  char *data = BF_Block_GetData(block);
+  memcpy(&numOfKeys, data+sizeof(char), sizeof(int));
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  offset = sizeof(char)+2*sizeof(int);
+  // Search the right position for the record is going to get inserted. And insert it
+  for(i=0; i<numOfKeys; i++) {
+      memcpy(key,  getIBlockData(fileInfo, data, i), keyLength);
+      // Access all the keys until you find the correct position for the record or the end of the block
+      if (compare(fileInfo, key, value1) > 0) {
+          memcpy(&nextNode, data+offset-sizeof(int), sizeof(int));
+          // insertEntry(fileInfo, nextNode, value1, value2, returnPair);
+          flag = 1;
+          break;
+      }
+      offset += keyLength+sizeof(int);
+  }
+  if (flag == 0) {
+      //printf("trust me dady offset =%d\n", offset);AM_InsertEntry(0, &key, "okok");
+      memcpy(&nextNode, getIBlockData(fileInfo, data, i)-sizeof(int), sizeof(int)); // works with -keyLength
+      // insertEntry(fileInfo, nextNode, value1, value2, returnPair);
+  }
+  free(key);
+  free(prevkey);
+  CALL_BF_BLOCK_DESTROY(block)
+  return nextNode;
+}

@@ -43,7 +43,7 @@ int compare(FilesInfo fileInfo, void *value1, void *value2) {
         return (*(int*)value1 - *(int*)value2);
     }
 }
-int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return returnPair);
+int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return *returnPair);
 
 int Create_Data_Block(int fd, int numOfRecords, int nextBlock) {
 
@@ -562,6 +562,37 @@ int scanForNextNode(FilesInfo fileInfo, int blockNum, void *value1){
   return nextNode;
 }
 
+char *writeToBuffer(FilesInfo fileInfo,  char *buffer, char *data, void *value1, void *value2){
+  // write record to buffer
+  int maxNumOfRecords = fileInfo.maxRecordsPerBlock;
+  int recordLength    = fileInfo.recordLength;
+  int numOfRecords    = maxNumOfRecords;
+  int keyLength       = fileInfo.attrLength1;
+  memcpy(buffer, data+sizeof(char)+2*sizeof(int), maxNumOfRecords*recordLength);
+
+  //write value1 in the buffer
+  int flag = 0;
+  int i = 0;
+  void *key = malloc(keyLength);
+  int offset = 0;
+
+  for(i=0; i<numOfRecords; i++) {
+      memcpy(key, data+offset, keyLength);
+      // If value on record less that value to insert memset the following records
+      if (compare(fileInfo, key, value1) > 0) {
+          writeDBlockData(fileInfo, data-(sizeof(char)+2*sizeof(int)), i, value1, value2);
+          flag = 1;
+          break;
+      }
+      offset += recordLength;
+  }
+  if(flag == 0){
+      writeDBlockData(fileInfo, data-(sizeof(char)+2*sizeof(int)), i, value1, value2);
+  }
+  free(key);
+  return buffer;
+}
+
 
 int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return *returnPair) {
     // Recursive function to insert entry in the treeNode
@@ -604,30 +635,39 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
         memcpy(&numOfRecords, data+sizeof(char), sizeof(int));
 
         if ( numOfRecords >= fileInfo.maxRecordsPerBlock ) {
+            //Allocate buffer
+            char *buffer = malloc(BF_BLOCK_SIZE+recordLength);
+            // Write data to buffer
+            buffer = writeToBuffer(fileInfo, buffer, data, value1, value2);
+
             // Find the point to cut the block in half 2 3 3 3 3 
-            int cutPoint = numOfRecords/2;
-            memcpy(key, getDBlockData(fileInfo, data, cutPoint), keyLength);
-            memcpy(prevkey, getDBlockData(fileInfo, data, cutPoint-1), keyLength);
+            int cutPoint = (numOfRecords+1)/2;
+            memcpy(key, getDBlockData(fileInfo, data-(sizeof(char)+2*sizeof(int)), cutPoint), keyLength);
+            memcpy(prevkey, getDBlockData(fileInfo, data-(sizeof(char)+2*sizeof(int)), cutPoint-1), keyLength);
             while ( compare(fileInfo, key, prevkey) == 0){
               cutPoint--;
               memset(key,0,keyLength);  // Flush the key memory
               memset(prevkey,0,keyLength);
-              memcpy(key, getDBlockData(fileInfo, data, cutPoint), keyLength);
-              memcpy(prevkey, getDBlockData(fileInfo, data, cutPoint-1), keyLength);
+              memcpy(key, getDBlockData(fileInfo, data-(sizeof(char)+2*sizeof(int)), cutPoint), keyLength);
+              memcpy(prevkey, getDBlockData(fileInfo, data-(sizeof(char)+2*sizeof(int)), cutPoint-1), keyLength);
             }
+            numOfRecords = cutPoint;
             newNumOfRecords = numOfRecords - cutPoint;
 
-            // Allocate and write the new data
+            // Allocate block
             CALL_BF_BLOCK_INIT(newblock)
             newBlockNum = Create_Data_Block(fileInfo.fileId, newNumOfRecords, nextBlock);
             CALL_BF(BF_GetBlock(fileInfo.fileId, newBlockNum, newblock))
             char *newdata = BF_Block_GetData(newblock);
 
-            memcpy(newdata+sizeof(char)+2*sizeof(int), data+sizeof(char)+2*sizeof(int)+(numOfRecords - newNumOfRecords)*recordLength, newNumOfRecords*recordLength);
+
+
+            memcpy(newdata+sizeof(char)+2*sizeof(int), buffer+cutPoint*recordLength, newNumOfRecords*recordLength);
             // Update the old block
-            numOfRecords = numOfRecords - newNumOfRecords;
             memcpy(data+sizeof(char), &numOfRecords, sizeof(int));
             memcpy(data+sizeof(char)+sizeof(int), &newBlockNum, sizeof(int));
+
+            free(buffer);
 
 
             memcpy(&(returnPair->key), getDBlockData(fileInfo, newdata, 0), sizeof(int));

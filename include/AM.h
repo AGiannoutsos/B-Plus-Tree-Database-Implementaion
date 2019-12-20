@@ -17,7 +17,7 @@ extern int BF_errno;
 
 typedef struct InsertEntry_Return
 {
-    int key;
+    void *key;
     int blockPointer;
 } InsertEntry_Return;
 
@@ -60,7 +60,7 @@ typedef struct FilesInfo
     int attrLength1;
     int attrLength2;
     int recordLength;
-	  int fileId;
+	int fileId;
     int openedScans;
     int root;
     int maxKeysPerBlock;

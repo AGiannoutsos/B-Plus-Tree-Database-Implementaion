@@ -570,6 +570,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
               memcpy(prevkey, getDBlockData(fileInfo, data-(sizeof(char)+2*sizeof(int)), cutPoint-1), keyLength);
             }
             newNumOfRecords = numOfRecords - cutPoint;
+            
             numOfRecords = cutPoint;
 
             // Allocate block

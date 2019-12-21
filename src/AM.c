@@ -791,7 +791,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
             printf("RETURN KEY: %s &&&  %d \n",returnPair->key, (int)getDBlockData(fileInfo, newdata, 0)-(int)newdata);
             returnPair->blockPointer = newBlockNum;
             BF_Block_SetDirty(newblock);
-            // CALL_BF_BLOCK_DESTROY(newblock)
+            CALL_BF_BLOCK_DESTROY(newblock)
         } else {
             int flag = 0;
             i = 0;

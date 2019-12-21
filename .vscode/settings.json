@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "ourfunctions.h": "c"
+        "ourfunctions.h": "c",
+        "type_traits": "c"
     }
 }

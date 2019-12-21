@@ -569,9 +569,9 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
               memcpy(key, getDBlockData(fileInfo, data-(sizeof(char)+2*sizeof(int)), cutPoint), keyLength);
               memcpy(prevkey, getDBlockData(fileInfo, data-(sizeof(char)+2*sizeof(int)), cutPoint-1), keyLength);
             }
-            newNumOfRecords = numOfRecords - cutPoint;
-            
             numOfRecords = cutPoint;
+            newNumOfRecords = fileInfo.maxRecordsPerBlock + 1 - cutPoint;
+            
 
             // Allocate block
             CALL_BF_BLOCK_INIT(newblock)

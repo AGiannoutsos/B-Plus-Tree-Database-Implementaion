@@ -79,8 +79,13 @@ typedef struct ScansInfo
 {
     int fileIndex;
     int blockId;
+    int recordBlock;
+    int recordIndex;
     int Operator;
-    int foundCounter;
+    int foundBlock;
+    int foundIndex;
+    int endBlock;
+    int endIndex;
 } ScansInfo;
 
 #define MAX_OPEN_SCANS 20

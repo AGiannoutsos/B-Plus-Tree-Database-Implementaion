@@ -98,14 +98,14 @@ int main() {
 		AM_PrintError(errStr);
 	}
 
-	// if (AM_CreateIndex(fltname, FLOAT, 39, STRING, 39) != AME_OK) {
-	// 	sprintf(errStr, "Expected error in AM_CreateIndex called on %s \n",
-	// 			fltname);
-	// 	AM_PrintError(errStr);
-	// } else {
-	// 	sprintf(errStr, "Creating %s index should have failed \n", fltname);
-	// 	AM_PrintError(errStr);
-	// }
+	if (AM_CreateIndex(fltname, FLOAT, 39, STRING, 39) != AME_OK) {
+		sprintf(errStr, "Expected error in AM_CreateIndex called on %s \n",
+				fltname);
+		AM_PrintError(errStr);
+	} else {
+		sprintf(errStr, "Creating %s index should have failed \n", fltname);
+		AM_PrintError(errStr);
+	}
 
 	if (AM_CreateIndex(empDname, STRING, 10, FLOAT, sizeof(float)) != AME_OK) {
 		sprintf(errStr, "Error in AM_CreateIndex called on %s \n", empDname);

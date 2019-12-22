@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "AM.h"
 #include "bf.h"
-#include "defn.h"
 #include "OurFunctions.h"
 
 int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, InsertEntry_Return *returnPair);
@@ -43,7 +41,7 @@ int compare(FilesInfo fileInfo, void *value1, void *value2) {
         if (*((float*)value1) > *((float*)value2)) return 1;
         else if (*((float*)value1) == *((float*)value2)) return 0;
         else return -1;
-    } else{
+    } else if (dataType == INTEGER){
         return (*(int*)value1 - *(int*)value2);
     }
 }
@@ -63,7 +61,6 @@ int Create_Data_Block(int fd, int numOfRecords, int nextBlock) {
   BF_Block_SetDirty(block);                                      
   CALL_BF_BLOCK_DESTROY(block)
   numOfBlock--;
-    printf("\n\n***CREATEDD NEWWW DATA BLOKK**%d****\n\n",numOfBlock);
   return  numOfBlock;                        
 }
 
@@ -79,7 +76,6 @@ int Create_Index_Block(int fd) {
   memcpy(data+sizeof(char), &numOfKeys, sizeof(int));  
 
   CALL_BF(BF_GetBlockCounter(fd, &numOfBlock))     
-    printf("\n\n***CREATEDD NEWWW INDEX BLOKK**%d****\n\n",numOfBlock);
   BF_Block_SetDirty(block);                                      
   CALL_BF_BLOCK_DESTROY(block)
   numOfBlock--;
@@ -222,8 +218,26 @@ printf("+AM_Init: just got called.\n");
 
 
 int AM_CreateIndex(char *fileName, char attrType1, int attrLength1, char attrType2, int attrLength2) {
-printf("+AM_CreateIndex: just got called.\n");
+// printf("+AM_CreateIndex: just got called.\n");
   AM_errno = AME_OK;
+  // Check if the types are accepted
+  if (typeCheck(attrType1) != 0) {
+    AM_errno = AME_ATTRTYPE1_ERROR;
+    return AME_ATTRTYPE1_ERROR;
+  }
+  if (typeCheck(attrType2) != 0) {
+    AM_errno = AME_ATTRTYPE2_ERROR;
+    return AME_ATTRTYPE2_ERROR;
+  }
+  // Check if the length of types are accepted
+  if (lengthCheck(attrType1, attrLength1) != 0) {
+    AM_errno = AME_ATTRLENGTH1_ERROR;
+    return AME_ATTRLENGTH1_ERROR;
+  }
+  if (lengthCheck(attrType2, attrLength2) != 0) {
+    AM_errno = AME_ATTRLENGTH2_ERROR;
+    return AME_ATTRLENGTH2_ERROR;
+  }
   // Creating the BF file
   CALL_BF(BF_CreateFile(fileName))
   // Initialize the BF file by allocating the first block where the information will be stored
@@ -256,7 +270,7 @@ printf("+AM_CreateIndex: just got called.\n");
 
 
 int AM_DestroyIndex(char *fileName) {
-printf("+AM_DestroyIndex: just got called.\n");
+// printf("+AM_DestroyIndex: just got called.\n");
   AM_errno = AME_OK;
   // Search the file in the filesMap
   int i = 0;
@@ -275,13 +289,16 @@ printf("+AM_DestroyIndex: just got called.\n");
 
 
 int AM_OpenIndex (char *fileName) {
-printf("+AM_OpenIndex: just got called.\n");
+  printf("+AM_OpenIndex: just got called.\n");
   AM_errno = AME_OK;
   // Check if there is free space in filesMap
   if (filesMap.filesCounter >= MAX_OPEN_FILES){
-    printf("open file\n\n");
     AM_errno = AME_OPEN_FILES_LIMIT_ERROR;
     return AME_OPEN_FILES_LIMIT_ERROR;
+  }
+  // Check if there is the file
+  if( access( fileName ) != -1 ) {
+    return AME_NOT_EXISTING_FILE;
   }
   // Open the file in the filesMap
   int fileIndex;
@@ -313,8 +330,6 @@ printf("+AM_OpenIndex: just got called.\n");
   memcpy(&(filesMap.filesInfo[fileIndex].maxRecordsPerBlock), data+B_PLUS_FILE_INDICATOR_SIZE+2*sizeof(char)+4*sizeof(int), sizeof(int));
 
 
-  printf("root %d kes per block %d recirds per block %d ",filesMap.filesInfo[fileIndex].root,  
-        filesMap.filesInfo[fileIndex].maxKeysPerBlock, filesMap.filesInfo[fileIndex].maxRecordsPerBlock);
   // Increase the filesCounter
   filesMap.filesCounter++;
 
@@ -324,7 +339,7 @@ printf("+AM_OpenIndex: just got called.\n");
 
 
 int AM_CloseIndex (int fileDesc) {
-printf("+AM_CloseIndex: just got called.\n");
+// printf("+AM_CloseIndex: just got called.\n");
   AM_errno = AME_OK;
   // Check if the file is closed
   if(filesMap.filesInfo[fileDesc].fileId == -1){
@@ -347,7 +362,7 @@ printf("+AM_CloseIndex: just got called.\n");
 
 
 int AM_InsertEntry(int fileDesc, void *value1, void *value2) {
-printf("+AM_InsertEntry: just got called.\n");
+// printf("+AM_InsertEntry: just got called.\n");
   AM_errno = AME_OK;
   // Check if the file is closed
   if(filesMap.filesInfo[fileDesc].fileId == -1){
@@ -384,7 +399,7 @@ printf("+AM_InsertEntry: just got called.\n");
     // printf("1-RETURN_PAIR: block=%d &&& kes = %s (but key = %s)\n", returnPair.blockPointer, (char*)returnPair.key, value1);
     insertEntry(filesMap.filesInfo[fileDesc], rootNum, value1, value2, &returnPair);
     // printf("2-RETURN_PAIR: block=%d &&& kes = %s\n\n", returnPair.blockPointer, (char*)returnPair.key);
-        printf("ROOT!!-TIME TO BREAK SOME ASS - key = %c\n",returnPair.key);
+        // printf("ROOT!!-TIME TO BREAK SOME ASS - key = %c\n",returnPair.key);
     if (returnPair.blockPointer != rootNum) {
         
         int keyLength = filesMap.filesInfo[fileDesc].attrLength1;
@@ -413,7 +428,7 @@ printf("+AM_InsertEntry: just got called.\n");
         memcpy(rootdata+B_PLUS_FILE_INDICATOR_SIZE+2*sizeof(char)+2*sizeof(int), &newRootBlockNum, sizeof(int));
         BF_Block_SetDirty(block);
         CALL_BF_BLOCK_DESTROY(block);
-        printf("ROOT!!-I BROKE SOME ASS OUR NEW ROOT IS: %d\n", newRootBlockNum);
+        // printf("ROOT!!-I BROKE SOME ASS OUR NEW ROOT IS: %d\n", newRootBlockNum);
     }
     free(returnPair.key);
   //?...
@@ -450,9 +465,6 @@ printf("+AM_OpenIndexScan: just got called.\n");
   filesMap.filesInfo[fileDesc].openedScans++;
   // Increase the scansCounter
   scansMap.scansCounter++;
-  //?...
-  //? Do the first search until tha leaf where the value may be
-  //?
 
   // find the right block that has value inside
   CALL_BF_BLOCK_INIT(block)
@@ -481,7 +493,7 @@ printf("+AM_OpenIndexScan: just got called.\n");
   int j;
   char *key = malloc(keyLength);
   memcpy(&numOfRecords, data+sizeof(char), sizeof(int));
-  printf("SCAN RESULTS block= %d numOfRecords= %d\n", nextBlock, numOfRecords);
+//   printf("SCAN RESULTS block= %d numOfRecords= %d\n", nextBlock, numOfRecords);
 
 
   // set defferent pointer for each operator
@@ -573,7 +585,7 @@ printf("+AM_OpenIndexScan: just got called.\n");
     // Less wastn found in this block
     if(i == 0){
     ////**** Impossible to find prev block ****////
-    printf(" E DEN KANO KAI PTYXIAKH\n\n");
+    // printf(" E DEN KANO KAI PTYXIAKH\n\n");
       // //Get next block
       // memcpy(&nextBlock, data+sizeof(char)+sizeof(int), sizeof(int));
       // if(nextBlock==-1){
@@ -603,7 +615,7 @@ printf("+AM_OpenIndexScan: just got called.\n");
   CALL_BF(BF_UnpinBlock(block))
   CALL_BF_BLOCK_DESTROY(block)
   free(key);
-  printf("ola kalaaaa\n");
+//   printf("ola kalaaaa\n");
   if(AM_errno != AME_OK)
     return AME_EOF;
   return scanIndex;
@@ -664,7 +676,7 @@ printf("+AM_FindNextEntry: just got called.\n");
       CALL_BF(BF_GetBlock(fileId, nextBlock, block))
       data = BF_Block_GetData(block);
       memcpy(&numOfRecords, data+sizeof(char), sizeof(int));
-      printf("next block-> %d data: %d\n",nextBlock,*(int*)(data+sizeof(char)+sizeof(int)));
+    //   printf("next block-> %d data: %d\n",nextBlock,*(int*)(data+sizeof(char)+sizeof(int)));
       scansMap.scansInfo[scanDesc].recordBlock = nextBlock;
       scansMap.scansInfo[scanDesc].recordIndex = 0;
       recordIndex = 0;
@@ -672,13 +684,12 @@ printf("+AM_FindNextEntry: just got called.\n");
     }
 
     memcpy(key, getDBlockData(filesMap.filesInfo[fileDesc], data, recordIndex), keyLength);
-    printf("EQUAL SCAN KEY= %s  || INDEX= %d || NYUMofrecords= %d  ||recirdBlock= %d\n",
-    key,recordIndex,numOfRecords,recordBlock);
+    // printf("EQUAL SCAN KEY= %s  || INDEX= %d || NYUMofrecords= %d  ||recirdBlock= %d\n", key,recordIndex,numOfRecords,recordBlock);
 
     scansMap.scansInfo[scanDesc].recordIndex++;
     free(key);
     CALL_BF_BLOCK_DESTROY(block)
-    return data+keyLength;
+    return getDBlockData(filesMap.filesInfo[fileDesc], data, recordIndex)+keyLength;
   }
   else{
     int skipBlock = 0;
@@ -699,7 +710,7 @@ printf("+AM_FindNextEntry: just got called.\n");
         AM_errno = AME_EOF;
         free(key);
         CALL_BF_BLOCK_DESTROY(block)
-        printf("EOF\n");
+        // printf("EOF\n");
         return NULL;
       }
 
@@ -725,19 +736,18 @@ printf("+AM_FindNextEntry: just got called.\n");
         AM_errno = AME_EOF;
         free(key);
         CALL_BF_BLOCK_DESTROY(block)
-        printf("EOF\n");
+        // printf("EOF\n");
         return NULL;
       }
     }
 
     memcpy(key, getDBlockData(filesMap.filesInfo[fileDesc], data, recordIndex), keyLength);
-    printf("EQUAL SCAN KEY= %s  || INDEX= %d || NYUMofrecords= %d  ||recirdBlock= %d\n",
-    key,recordIndex,numOfRecords,recordBlock);
+    // printf("EQUAL SCAN KEY= %s  || INDEX= %d || NYUMofrecords= %d  ||recirdBlock= %d\n", key,recordIndex,numOfRecords,recordBlock);
 
     scansMap.scansInfo[scanDesc].recordIndex++;
     free(key);
     CALL_BF_BLOCK_DESTROY(block)
-    return data+keyLength;
+    return getDBlockData(filesMap.filesInfo[fileDesc], data, recordIndex)+keyLength;
   }
 
 
@@ -769,45 +779,65 @@ printf("+AM_CloseIndexScan: just got called.\n");
 
 
 void AM_PrintError(char *errString) {
+  if (AM_errno == AME_OK)
+    return;
   if (errString != NULL)
-    printf("%s: ", errString);
+    printf("%s\t: ", errString);
   switch(AM_errno) {  
-      case AME_OK:
-        printf("All good Baby!\n");
+    //   case AME_OK:
+    //     printf("All good!\n");
         break;
       case AME_EOF:
-        printf("AME_EOF: .\n");
+        printf("AME_EOF.\n");
         break;
       case AME_OPEN_FILES_LIMIT_ERROR:
-        printf("AME_OPEN_FILES_LIMIT_ERROR: .\n");
+        printf("AME_OPEN_FILES_LIMIT_ERROR.\n");
         //    printf("Error: Has reached the maximum number of files that can be opened\n");
         break;
       case AME_TYPE_ERROR:
-        printf("AME_TYPE_ERROR: .\n");
+        printf("AME_TYPE_ERROR.\n");
         //    printf("Error: Not a B-Plus-file\n");
         break;
       case AME_INVALID_FILE_ERROR:
-        printf("AME_INVALID_FILE_ERROR: .\n");
+        printf("AME_INVALID_FILE_ERROR.\n");
         break;
       case AME_OPEN_SCANS_LIMIT_ERROR:
-        printf("AME_OPEN_SCANS_LIMIT_ERROR: .\n");
+        printf("AME_OPEN_SCANS_LIMIT_ERROR.\n");
         //    printf("Error: Has reached the maximum number of scans that can be opened\n");
         break;
       case AME_OPENED_SCANS:
-        printf("AME_OPENED_SCANS: .\n");
+        printf("AME_OPENED_SCANS.\n");
         break;
       case AME_OPENED_FILE:
-        printf("AME_OPENED_FILE: .\n");
+        printf("AME_OPENED_FILE.\n");
         //    printf("Error: file is opened in the filesMap\n");
         break;
       case AME_INVALID_SCAN_ERROR:
-        printf("AME_INVALID_SCAN_ERROR: .\n");
+        printf("AME_INVALID_SCAN_ERROR.\n");
         break;
       case AME_BF_ERROR:
         BF_PrintError(BF_errno);
         break;
       case AME_UNABLE_TO_DELETE_FILE:
         printf("AME_UNABLE_TO_DELETE_FILE: Unable to destroy the file.\n");
+        break;
+      case AME_ATTRLENGTH1_ERROR:
+        printf("AME_ATTRLENGTH1_ERROR.\n");
+        break;
+      case AME_ATTRLENGTH2_ERROR:
+        printf("AME_ATTRLENGTH2_ERROR.\n");
+        break;
+      case AME_ATTRTYPE1_ERROR:
+        printf("AME_ATTRTYPE1_ERROR.\n");
+        break;
+      case AME_ATTRTYPE2_ERROR:
+        printf("AME_ATTRTYPE2_ERROR.\n");
+        break;
+      case UNDEFINED_BLOCK_TYPE:
+        printf("UNDEFINED_BLOCK_TYPE.\n");
+        break;
+      case AME_NOT_EXISTING_FILE:
+        printf("AME_NOT_EXISTING_FILE.\n");
         break;
       default:
         printf("Undefined Error!\n");
@@ -846,7 +876,7 @@ char *writeToDBuffer(FilesInfo fileInfo,  char *buffer, char *data, void *value1
       memcpy(key, buffer+offset, strlenAttr1);
       // If value on record less that value to insert memset the following records
       if (compare(fileInfo, key, value1) > 0) {
-        printf("TRIS LALOUN KAI TRIS XOREVOUN move %d\n",(numOfRecords-i)*recordLength);
+        // printf("TRIS LALOUN KAI TRIS XOREVOUN move %d\n",(numOfRecords-i)*recordLength);
         memmove(buffer+offset+recordLength, buffer+offset, (numOfRecords-i)*recordLength);  //move data to write in that position
         memset(buffer+offset, 0, recordLength); //flush the moved data space
         //write the new data
@@ -921,7 +951,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
     CALL_BF_BLOCK_INIT(block)
     int test;
     BF_GetBlockCounter(fileInfo.fileId,&test);
-        printf("datablock %d nums-> %d\n\n",treeNode, test);
+        // printf("datablock %d nums-> %d\n\n",treeNode, test);
     CALL_BF(BF_GetBlock(fileInfo.fileId, treeNode, block))
     char *data = BF_Block_GetData(block);
     // Unpin the block to minimize the count of the opened block(usefull for deep recursive insertings)
@@ -935,7 +965,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
     char indicator;
     memcpy(&indicator, data, sizeof(char));
     // Check the type of block
-    if (indicator == 'i') {
+    if (indicator == INDEX_BLOCK_TYPE) {
         // Block is index block
         int numOfKeys;
         memcpy(&numOfKeys, data+sizeof(char), sizeof(int));
@@ -954,9 +984,9 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
 //        CALL_BF_BLOCK_DESTROY(block)
         
         
-        printf("1-RETURN_PAIR: block=%d &&& kes = %s (but key = %s)\n", newReturnPair.blockPointer, (char*)newReturnPair.key, value1);
+        // printf("1-RETURN_PAIR: block=%d &&& kes = %s (but key = %s)\n", newReturnPair.blockPointer, (char*)newReturnPair.key, value1);
         insertEntry(fileInfo, nextNode, value1, value2, &newReturnPair);
-        printf("2-RETURN_PAIR: block=%d &&& kes = %s\n\n", newReturnPair.blockPointer, (char*)newReturnPair.key);
+        // printf("2-RETURN_PAIR: block=%d &&& kes = %s\n\n", newReturnPair.blockPointer, (char*)newReturnPair.key);
         if (newReturnPair.blockPointer != treeNode) {
             // CALL_BF_BLOCK_INIT(block)
             // CALL_BF(BF_GetBlock(fileInfo.fileId, treeNode, block))
@@ -1005,14 +1035,14 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
 
                 memcpy(returnPair->key, buffer+cutPoint*sizeOfPair-keyLength, keyLength);
                 returnPair->blockPointer = newBlockNum;
-                printf("++++++++WE WILL RETURN: %s BUT WE RETURN: %s\n", (buffer+cutPoint*sizeOfPair-keyLength), returnPair->key);
+                // printf("++++++++WE WILL RETURN: %s BUT WE RETURN: %s\n", (buffer+cutPoint*sizeOfPair-keyLength), returnPair->key);
                 free(buffer);
                 BF_Block_SetDirty(newblock);
                 CALL_BF_BLOCK_DESTROY(newblock)
-            printf("INCALL-RETURN_PAIR: block=%d &&& kes = %s\n", returnPair->blockPointer, (char*)returnPair->key);            returnPair->blockPointer = newBlockNum;
+            // printf("INCALL-RETURN_PAIR: block=%d &&& kes = %s\n", returnPair->blockPointer, (char*)returnPair->key);            returnPair->blockPointer = newBlockNum;
 
             } else {
-                printf("TIME TO BREAK SOME ASS\n");
+                // printf("TIME TO BREAK SOME ASS\n");
                 memmove(nextNodeKeyPosition+keyLength+sizeof(int), nextNodeKeyPosition,
                         data+2*sizeof(int)+sizeof(char)+numOfKeys*(keyLength+sizeof(int)) - nextNodeKeyPosition);  //move data to write in that position
                 memset(nextNodeKeyPosition, 0, keyLength+sizeof(int)); //flush the moved data space
@@ -1020,19 +1050,19 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
                 int strlenAttr1      = fileInfo.attrLength1;
                 if(fileInfo.attrType1 == STRING && strlen(newReturnPair.key) < strlenAttr1)
                     strlenAttr1 = strlen(newReturnPair.key)+1;
-                    printf("NEW KEY: %s\n",newReturnPair.key);
+                    // printf("NEW KEY: %s\n",newReturnPair.key);
                 memcpy(nextNodeKeyPosition, newReturnPair.key, strlenAttr1);
                 memcpy(nextNodeKeyPosition+keyLength, &(newReturnPair.blockPointer), sizeof(int));
 
                 numOfKeys++;
                 memcpy(data+sizeof(char),&numOfKeys,sizeof(int));
-                printf("I BROKE SOME ASS\n");
+                // printf("I BROKE SOME ASS\n");
             }
             free(newReturnPair.key);
             // BF_Block_SetDirty(block);
             // CALL_BF_BLOCK_DESTROY(block)
         }
-    } else if (indicator == 'd') {
+    } else if (indicator == DATA_BLOCK_TYPE) {
         key = malloc(keyLength);
         // CALL_BF_BLOCK_INIT(block)
         // CALL_BF(BF_GetBlock(fileInfo.fileId, treeNode, block))
@@ -1056,7 +1086,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
             prevkey = malloc(keyLength);
             memcpy(key, buffer+cutPoint*recordLength, keyLength);
             memcpy(prevkey, buffer+(cutPoint-1)*recordLength, keyLength);
-            printf("KEY= %s || PREVKEY= %s +++++++++++++ THEY HAVE POSITIONS: %d\n", key, prevkey, (int)getDBlockData(fileInfo, buffer-(sizeof(char)+2*sizeof(int)), cutPoint) - (int)getDBlockData(fileInfo, buffer-(sizeof(char)+2*sizeof(int)), cutPoint-1));
+            // printf("KEY= %s || PREVKEY= %s +++++++++++++ THEY HAVE POSITIONS: %d\n", key, prevkey, (int)getDBlockData(fileInfo, buffer-(sizeof(char)+2*sizeof(int)), cutPoint) - (int)getDBlockData(fileInfo, buffer-(sizeof(char)+2*sizeof(int)), cutPoint-1));
             while ( compare(fileInfo, key, prevkey) == 0){
               cutPoint--;
               memset(key,0,keyLength);  // Flush the key memory
@@ -1065,7 +1095,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
               memcpy(prevkey, getDBlockData(fileInfo, buffer-(sizeof(char)+2*sizeof(int)), cutPoint-1), keyLength);
             }
             newNumOfRecords = fileInfo.maxRecordsPerBlock + 1 - cutPoint;
-            printf("INFO HERE: <CUTPOINT: %d & NUMOFRECORDS: %d & MAXRECORDS: %d & NEWNUMOFRECORDS: %d>\n", cutPoint, numOfRecords, fileInfo.maxRecordsPerBlock, newNumOfRecords);
+            // printf("INFO HERE: <CUTPOINT: %d & NUMOFRECORDS: %d & MAXRECORDS: %d & NEWNUMOFRECORDS: %d>\n", cutPoint, numOfRecords, fileInfo.maxRecordsPerBlock, newNumOfRecords);
             numOfRecords = cutPoint;
             // Allocate block
             CALL_BF_BLOCK_INIT(newblock)
@@ -1074,7 +1104,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
             char *newdata = BF_Block_GetData(newblock);
 
 
-            printf("NEW num of records: %d &&& buffer pointer : %d\n\n", newNumOfRecords, cutPoint*recordLength);
+            // printf("NEW num of records: %d &&& buffer pointer : %d\n\n", newNumOfRecords, cutPoint*recordLength);
             memcpy(newdata+sizeof(char)+2*sizeof(int), buffer+cutPoint*recordLength, newNumOfRecords*recordLength);
             // Update the old block
             memcpy(data+sizeof(char)+2*sizeof(int),  buffer, numOfRecords*recordLength);
@@ -1085,7 +1115,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
             free(buffer);
             free(prevkey);
             memcpy(returnPair->key, getDBlockData(fileInfo, newdata, 0), keyLength);
-            printf("RETURN KEY: %s &&&  %d \n",returnPair->key, (int)getDBlockData(fileInfo, newdata, 0)-(int)newdata);
+            // printf("RETURN KEY: %s &&&  %d \n",returnPair->key, (int)getDBlockData(fileInfo, newdata, 0)-(int)newdata);
             returnPair->blockPointer = newBlockNum;
             BF_Block_SetDirty(newblock);
             CALL_BF_BLOCK_DESTROY(newblock)
@@ -1115,7 +1145,7 @@ int insertEntry(FilesInfo fileInfo, int treeNode,void *value1,void *value2, Inse
 //        BF_Block_SetDirty(block);
 //        CALL_BF_BLOCK_DESTROY(block)
     } else {
-        printf("gamh8hkameeee \n\n");
+        return UNDEFINED_BLOCK_TYPE;
     }
     BF_Block_SetDirty(block);
     CALL_BF_BLOCK_DESTROY(block)

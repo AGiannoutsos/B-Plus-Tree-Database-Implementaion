@@ -15,6 +15,8 @@ extern int BF_errno;
 
 // OUR CODE STARTS HERE
 
+#include "defn.h"
+
 typedef struct InsertEntry_Return
 {
     void *key;
@@ -34,11 +36,11 @@ typedef struct InsertEntry_Return
 // } AM_Data_Information;
 // #define AM_DATA_BLOCK_INFORMATION_SIZE sizeof(AM_Data_Information)
 
-#define B_PLUS_FILE_INDICATOR_TYPE char *
-#define B_PLUS_FILE_INDICATOR "B+"
+#define B_PLUS_FILE_INDICATOR_TYPE int
+#define B_PLUS_FILE_INDICATOR 666
 #define B_PLUS_FILE_INDICATOR_SIZE sizeof(B_PLUS_FILE_INDICATOR)
 #define B_PLUS_FILE_INDICATOR_COMPARE(indicator) \
-    ( strcmp(B_PLUS_FILE_INDICATOR, indicator) == 0 )
+    ( indicator == B_PLUS_FILE_INDICATOR )
 
 #define AME_OK 0
 #define AME_EOF -1                      /* There is not other value that satisfies the scan */
@@ -51,6 +53,13 @@ typedef struct InsertEntry_Return
 #define AME_INVALID_SCAN_ERROR -8       /* Scan is not open */
 #define AME_BF_ERROR -9                 /* Error in the bf part */
 #define AME_UNABLE_TO_DELETE_FILE -10   /* Unable to delete file with remove() */
+#define AME_ATTRLENGTH1_ERROR -11
+#define AME_ATTRLENGTH2_ERROR -12
+#define AME_ATTRTYPE1_ERROR -13
+#define AME_ATTRTYPE2_ERROR -14
+#define UNDEFINED_BLOCK_TYPE -15
+#define AME_NOT_EXISTING_FILE -16
+
 
 typedef struct FilesInfo
 {

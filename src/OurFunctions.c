@@ -1,3 +1,8 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "AM.h"
+#include "bf.h"
 #include "OurFunctions.h"
 
 void *getDBlockData(FilesInfo fileInfo, char * data, int i){

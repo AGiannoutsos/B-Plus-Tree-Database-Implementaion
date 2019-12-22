@@ -113,109 +113,109 @@ printf("+AM_Init: just got called.\n");
 // // Test Scan Closes (close already closed scan, or not existed scan, close multiple scans)
 // // Combine the above and destroy or close files that have opened scans, or have terminated at least one scan
 
-   AM_CreateIndex("mytest.db", 'i', 4, 'c', 88);
-   AM_PrintError(NULL);
-   AM_CreateIndex("mytest.db", 'i', 4, 'c', 44);
-   AM_PrintError(NULL);
-   AM_DestroyIndex("mytest.db");
-   AM_PrintError(NULL);
-   AM_DestroyIndex("mytest.db");
-   AM_PrintError(NULL);
-   AM_CreateIndex("mytest.db", 'c', 88, 'c', 4);
-   AM_PrintError(NULL);
-   int index = -324;
-   index = AM_OpenIndex("mytest.db");
-   AM_PrintError(NULL);
-   printf("index in filesMap is:%d (Counter = %d).\n", index, filesMap.filesCounter);
-   index = AM_OpenIndex("mytest.db");
-   AM_PrintError(NULL);
-   printf("index in filesMap is:%d (Counter = %d).\n", index, filesMap.filesCounter);
-   index = AM_OpenIndex("mytest.db");
-   AM_PrintError(NULL);
-   printf("index in filesMap is:%d (Counter = %d).\n", index, filesMap.filesCounter);
-   AM_CloseIndex(index);
-   AM_PrintError(NULL);
-   printf("index in filesMap is:%d (Counter = %d).\n", index, filesMap.filesCounter);
-   char* key = "I";
-//    AM_InsertEntry(0, key, "");
+//    AM_CreateIndex("mytest.db", 'i', 4, 'c', 88);
 //    AM_PrintError(NULL);
-//    key = "F";
-//    AM_InsertEntry(0, key, "");
-//    key = "G";
-//    AM_InsertEntry(0, key, "");
-//    key = "I";
-//    AM_InsertEntry(0, key, "");
-//    key = "I";
-//    AM_InsertEntry(0, key, "");
-//    key = "JJ";
-//    AM_InsertEntry(0, key, "");
-//    key = "W";
-//    AM_InsertEntry(0, key, "");
-//    key = "Z";
-//    AM_InsertEntry(0, key, "");
-//     key = "ZZ";
-//    AM_InsertEntry(0, key, "");
+//    AM_CreateIndex("mytest.db", 'i', 4, 'c', 44);
+//    AM_PrintError(NULL);
+//    AM_DestroyIndex("mytest.db");
+//    AM_PrintError(NULL);
+//    AM_DestroyIndex("mytest.db");
+//    AM_PrintError(NULL);
+//    AM_CreateIndex("mytest.db", 'c', 88, 'c', 4);
+//    AM_PrintError(NULL);
+//    int index = -324;
+//    index = AM_OpenIndex("mytest.db");
+//    AM_PrintError(NULL);
+//    printf("index in filesMap is:%d (Counter = %d).\n", index, filesMap.filesCounter);
+//    index = AM_OpenIndex("mytest.db");
+//    AM_PrintError(NULL);
+//    printf("index in filesMap is:%d (Counter = %d).\n", index, filesMap.filesCounter);
+//    index = AM_OpenIndex("mytest.db");
+//    AM_PrintError(NULL);
+//    printf("index in filesMap is:%d (Counter = %d).\n", index, filesMap.filesCounter);
+//    AM_CloseIndex(index);
+//    AM_PrintError(NULL);
+//    printf("index in filesMap is:%d (Counter = %d).\n", index, filesMap.filesCounter);
+//    char* key = "I";
+// //    AM_InsertEntry(0, key, "");
+// //    AM_PrintError(NULL);
+// //    key = "F";
+// //    AM_InsertEntry(0, key, "");
+// //    key = "G";
+// //    AM_InsertEntry(0, key, "");
+// //    key = "I";
+// //    AM_InsertEntry(0, key, "");
+// //    key = "I";
+// //    AM_InsertEntry(0, key, "");
+// //    key = "JJ";
+// //    AM_InsertEntry(0, key, "");
+// //    key = "W";
+// //    AM_InsertEntry(0, key, "");
+// //    key = "Z";
+// //    AM_InsertEntry(0, key, "");
+// //     key = "ZZ";
+// //    AM_InsertEntry(0, key, "");
    
+// //    key = malloc(2);
+// //    strcpy(key, "a");
+// //    for (int i = 0; i < 20; i++){
+// //       AM_InsertEntry(0, key, "");
+// //         // strcpy(key, &((++key[0])) );
+// //         key[0] = 'a' + i;
+// //    }
 //    key = malloc(2);
-//    strcpy(key, "a");
-//    for (int i = 0; i < 20; i++){
+//    strcpy(key, "Z");
+//    for (int i = 0; i < 11; i++){
 //       AM_InsertEntry(0, key, "");
 //         // strcpy(key, &((++key[0])) );
-//         key[0] = 'a' + i;
+//         key[0] = 'Z' - (i+1);
 //    }
-   key = malloc(2);
-   strcpy(key, "Z");
-   for (int i = 0; i < 11; i++){
-      AM_InsertEntry(0, key, "");
-        // strcpy(key, &((++key[0])) );
-        key[0] = 'Z' - (i+1);
-   }
 
-  key = "S";
-  AM_InsertEntry(0, key, "");
+//   key = "S";
+//   AM_InsertEntry(0, key, "");
 
-   AM_PrintError(NULL);
-  //test the 3 first blocks printing
-  BF_Block *block;
-  BF_Block_Init(&block);
-  int fd = filesMap.filesInfo[0].fileId;
-  char *data;
-  int *intdata;
-  int blocks;
-  char myID;
-  BF_GetBlockCounter(fd,&blocks);
-  for (int i = 1; i < blocks; i++){
-    BF_GetBlock(fd,i,block);
-    printf("i=%d\n",i);
-    data = BF_Block_GetData(block);
-    memcpy(&myID, data, sizeof(char));
-    if(myID == 'd') {
-        printf("block-> %d dataa-> %c \n",i,data[0]);
-        intdata = data;
-        for (int j = 1; j < 512; j+=2){
-        printf("kcolb-> %d data[%d]-> %c||%d      kcolb-> %d data[%d]-> %c||%d\n",i,j,(int)data[j],data[j],i,j+1,(int)data[j+1],data[j+1]);
-        }
-    }
-        printf("-----\n");
-    CALL_BF(BF_UnpinBlock(block))
-  }
-  BF_Block_Destroy(&block);
+//    AM_PrintError(NULL);
+//   //test the 3 first blocks printing
+//   BF_Block *block;
+//   BF_Block_Init(&block);
+//   int fd = filesMap.filesInfo[0].fileId;
+//   char *data;
+//   int *intdata;
+//   int blocks;
+//   char myID;
+//   BF_GetBlockCounter(fd,&blocks);
+//   for (int i = 1; i < blocks; i++){
+//     BF_GetBlock(fd,i,block);
+//     printf("i=%d\n",i);
+//     data = BF_Block_GetData(block);
+//     memcpy(&myID, data, sizeof(char));
+//     if(myID == 'd') {
+//         printf("block-> %d dataa-> %c \n",i,data[0]);
+//         intdata = data;
+//         for (int j = 1; j < 512; j+=2){
+//         printf("kcolb-> %d data[%d]-> %c||%d      kcolb-> %d data[%d]-> %c||%d\n",i,j,(int)data[j],data[j],i,j+1,(int)data[j+1],data[j+1]);
+//         }
+//     }
+//         printf("-----\n");
+//     CALL_BF(BF_UnpinBlock(block))
+//   }
+//   BF_Block_Destroy(&block);
 
 
-  int scan = AM_OpenIndexScan(0, NOT_EQUAL, "Z");
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
-  AM_FindNextEntry(scan);
+//   int scan = AM_OpenIndexScan(0, LESS_THAN_OR_EQUAL, "Z");
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
+//   AM_FindNextEntry(scan);
 
   printf("++Test Finished\n---------------------------\n");
 }
@@ -279,6 +279,7 @@ printf("+AM_OpenIndex: just got called.\n");
   AM_errno = AME_OK;
   // Check if there is free space in filesMap
   if (filesMap.filesCounter >= MAX_OPEN_FILES){
+    printf("open file\n\n");
     AM_errno = AME_OPEN_FILES_LIMIT_ERROR;
     return AME_OPEN_FILES_LIMIT_ERROR;
   }
@@ -598,10 +599,11 @@ printf("+AM_OpenIndexScan: just got called.\n");
 
 
 
-  scansMap.scansInfo[scanIndex].blockId = 411563;
+  // scansMap.scansInfo[scanIndex].blockId = 411563;
   CALL_BF(BF_UnpinBlock(block))
   CALL_BF_BLOCK_DESTROY(block)
   free(key);
+  printf("ola kalaaaa\n");
   if(AM_errno != AME_OK)
     return AME_EOF;
   return scanIndex;

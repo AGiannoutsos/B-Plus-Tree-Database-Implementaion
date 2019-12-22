@@ -59,6 +59,8 @@ typedef struct InsertEntry_Return
 #define AME_ATTRTYPE2_ERROR -14
 #define UNDEFINED_BLOCK_TYPE -15
 #define AME_NOT_EXISTING_FILE -16
+#define AME_INVALID_FILEDESC_ERROR -17
+#define AME_INVALID_SCANDESC_ERROR -18
 
 
 typedef struct FilesInfo

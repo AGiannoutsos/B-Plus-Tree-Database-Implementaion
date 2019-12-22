@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "AM.h"
 #include "bf.h"
 #include "OurFunctions.h"
@@ -289,7 +290,7 @@ int AM_DestroyIndex(char *fileName) {
 
 
 int AM_OpenIndex (char *fileName) {
-  printf("+AM_OpenIndex: just got called.\n");
+//   printf("+AM_OpenIndex: just got called.\n");
   AM_errno = AME_OK;
   // Check if there is free space in filesMap
   if (filesMap.filesCounter >= MAX_OPEN_FILES){
@@ -297,7 +298,8 @@ int AM_OpenIndex (char *fileName) {
     return AME_OPEN_FILES_LIMIT_ERROR;
   }
   // Check if there is the file
-  if( access( fileName ) != -1 ) {
+  if( access(fileName, F_OK) == -1 ) {
+    AM_errno = AME_NOT_EXISTING_FILE;
     return AME_NOT_EXISTING_FILE;
   }
   // Open the file in the filesMap
@@ -341,8 +343,13 @@ int AM_OpenIndex (char *fileName) {
 int AM_CloseIndex (int fileDesc) {
 // printf("+AM_CloseIndex: just got called.\n");
   AM_errno = AME_OK;
+  // Check if the fileDesc is accepted
+  if (fileDesc < 0 || fileDesc > MAX_OPEN_FILES) {
+    AM_errno = AME_INVALID_FILEDESC_ERROR;
+    return AME_INVALID_FILEDESC_ERROR;
+  }
   // Check if the file is closed
-  if(filesMap.filesInfo[fileDesc].fileId == -1){
+  if(filesMap.filesInfo[fileDesc].fileId == -1) {
     AM_errno = AME_INVALID_FILE_ERROR;
     return AME_INVALID_FILE_ERROR;
   }
@@ -364,6 +371,11 @@ int AM_CloseIndex (int fileDesc) {
 int AM_InsertEntry(int fileDesc, void *value1, void *value2) {
 // printf("+AM_InsertEntry: just got called.\n");
   AM_errno = AME_OK;
+  // Check if the fileDesc is accepted
+  if (fileDesc < 0 || fileDesc > MAX_OPEN_FILES) {
+    AM_errno = AME_INVALID_FILEDESC_ERROR;
+    return AME_INVALID_FILEDESC_ERROR;
+  }
   // Check if the file is closed
   if(filesMap.filesInfo[fileDesc].fileId == -1){
     AM_errno = AME_INVALID_FILE_ERROR;
@@ -440,8 +452,13 @@ int AM_InsertEntry(int fileDesc, void *value1, void *value2) {
 
 
 int AM_OpenIndexScan(int fileDesc, int op, void *value) {
-printf("+AM_OpenIndexScan: just got called.\n");
+// printf("+AM_OpenIndexScan: just got called.\n");
   AM_errno = AME_OK;
+  // Check if the fileDesc is accepted
+  if (fileDesc < 0 || fileDesc > MAX_OPEN_FILES) {
+    AM_errno = AME_INVALID_FILEDESC_ERROR;
+    return AME_INVALID_FILEDESC_ERROR;
+  }
   // Check if there is free space in ScansMap
   if (scansMap.scansCounter >= MAX_OPEN_SCANS){
     AM_errno = AME_OPEN_SCANS_LIMIT_ERROR;
@@ -623,11 +640,13 @@ printf("+AM_OpenIndexScan: just got called.\n");
 
 
 void *AM_FindNextEntry(int scanDesc) {
-printf("+AM_FindNextEntry: just got called.\n");
+// printf("+AM_FindNextEntry: just got called.\n");
   AM_errno = AME_OK;
-  //?...
-  //? Search the next entry that is good, based on our standards boy
-  //?  
+  // Check if the fileDesc is accepted
+  if (scanDesc < 0 || scanDesc > MAX_OPEN_SCANS) {
+    AM_errno = AME_INVALID_SCANDESC_ERROR;
+    return NULL;
+  }
 //   if (there is not other entry which we wanna make love) {
 //     AM_errno = AME_EOF;
 //     return NULL;
@@ -799,8 +818,13 @@ printf("+AM_FindNextEntry: just got called.\n");
 
 
 int AM_CloseIndexScan(int scanDesc) {
-printf("+AM_CloseIndexScan: just got called.\n");
+// printf("+AM_CloseIndexScan: just got called.\n");
   AM_errno = AME_OK;
+  // Check if the fileDesc is accepted
+  if (scanDesc < 0 || scanDesc > MAX_OPEN_SCANS) {
+    AM_errno = AME_INVALID_SCANDESC_ERROR;
+    return AME_INVALID_SCANDESC_ERROR;
+  }
   // Check if the scan is closed
   if (scansMap.scansInfo[scanDesc].fileIndex == -1) {
     AM_errno = AME_INVALID_SCAN_ERROR;
@@ -882,6 +906,12 @@ void AM_PrintError(char *errString) {
         break;
       case AME_NOT_EXISTING_FILE:
         printf("AME_NOT_EXISTING_FILE.\n");
+        break;
+      case AME_INVALID_FILEDESC_ERROR:
+        printf("AME_INVALID_FILEDESC_ERROR.\n");
+        break;
+      case AME_INVALID_SCANDESC_ERROR:
+        printf("AME_INVALID_SCANDESC_ERROR.\n");
         break;
       default:
         printf("Undefined Error!\n");

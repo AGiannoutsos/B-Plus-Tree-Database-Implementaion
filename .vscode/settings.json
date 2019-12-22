@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "ourfunctions.h": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "unistd.h": "c"
     }
 }

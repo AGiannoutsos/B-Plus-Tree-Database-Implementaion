@@ -171,6 +171,8 @@ printf("+AM_Init: just got called.\n");
         key[0] = 'Z' - (i+1);
    }
 
+  key = "S";
+  AM_InsertEntry(0, key, "");
 
    AM_PrintError(NULL);
   //test the 3 first blocks printing
@@ -199,13 +201,22 @@ printf("+AM_Init: just got called.\n");
   }
   BF_Block_Destroy(&block);
 
-  key = "S";
-  AM_InsertEntry(0, key, "");
 
-  int scan = AM_OpenIndexScan(0, EQUAL, "S");
+  int scan = AM_OpenIndexScan(0, NOT_EQUAL, "Z");
   AM_FindNextEntry(scan);
   AM_FindNextEntry(scan);
   AM_FindNextEntry(scan);
+  AM_FindNextEntry(scan);
+  AM_FindNextEntry(scan);
+  AM_FindNextEntry(scan);
+  AM_FindNextEntry(scan);
+  AM_FindNextEntry(scan);
+  AM_FindNextEntry(scan);
+  AM_FindNextEntry(scan);
+  AM_FindNextEntry(scan);
+  AM_FindNextEntry(scan);
+  AM_FindNextEntry(scan);
+
   printf("++Test Finished\n---------------------------\n");
 }
 
@@ -352,6 +363,8 @@ printf("+AM_InsertEntry: just got called.\n");
     rightBlockNum = Create_Data_Block(filesMap.filesInfo[fileDesc].fileId, 0, -1);
     leftBlockNum  = Create_Data_Block(filesMap.filesInfo[fileDesc].fileId, 0, rightBlockNum);
 
+    filesMap.filesInfo[fileDesc].firstBlock = leftBlockNum;
+
     memcpy(data+sizeof(char)+sizeof(int), &leftBlockNum, sizeof(int));
     memcpy(data+sizeof(char)+2*sizeof(int), value1, filesMap.filesInfo[fileDesc].attrLength1);
     memcpy(data+sizeof(char)+2*sizeof(int)+filesMap.filesInfo[fileDesc].attrLength1, &rightBlockNum, sizeof(int));
@@ -461,6 +474,7 @@ printf("+AM_OpenIndexScan: just got called.\n");
 
   //Scan inside the block
   int keyLength = filesMap.filesInfo[fileDesc].attrLength1;
+  int firstBlock = filesMap.filesInfo[fileDesc].firstBlock;
   int numOfRecords;
   int i;
   int j;
@@ -470,7 +484,7 @@ printf("+AM_OpenIndexScan: just got called.\n");
 
 
   // set defferent pointer for each operator
-  if( op == EQUAL || op == GREATER_THAN_OR_EQUAL ){
+  if( op == EQUAL || op == GREATER_THAN_OR_EQUAL || op == NOT_EQUAL || op == LESS_THAN_OR_EQUAL){
     //find the last first record in block
     for (i = 0; i < numOfRecords; i++){
       memcpy(key, getDBlockData(filesMap.filesInfo[fileDesc], data, i), keyLength);
@@ -479,27 +493,47 @@ printf("+AM_OpenIndexScan: just got called.\n");
     }
     scansMap.scansInfo[scanIndex].foundBlock    = nextBlock;
     scansMap.scansInfo[scanIndex].foundIndex    = i;
-    scansMap.scansInfo[scanIndex].recordBlock   = nextBlock;
-    scansMap.scansInfo[scanIndex].recordIndex   = i;
-
-
-    //for the ending point
-    if(op == EQUAL){
-      for (j = i; j < numOfRecords; j++){
-        memcpy(key, getDBlockData(filesMap.filesInfo[fileDesc], data, j), keyLength);
-        if (compare(filesMap.filesInfo[fileDesc], key, value) > 0)
-          break;
-      }
-      scansMap.scansInfo[scanIndex].endBlock = nextBlock;
-      scansMap.scansInfo[scanIndex].endIndex = j;
+    
+    // Find the last equal key in the same block
+    for (j = i; j < numOfRecords; j++){
+      memcpy(key, getDBlockData(filesMap.filesInfo[fileDesc], data, j), keyLength);
+      if (compare(filesMap.filesInfo[fileDesc], key, value) > 0)
+        break;
     }
-    else{
-      scansMap.scansInfo[scanIndex].endBlock = nextBlock;
-      scansMap.scansInfo[scanIndex].endIndex = BF_BLOCK_SIZE;
+
+    //for the start and ending point
+    if(op == EQUAL){
+      
+      scansMap.scansInfo[scanIndex].recordBlock   = nextBlock;
+      scansMap.scansInfo[scanIndex].recordIndex   = i;
+      scansMap.scansInfo[scanIndex].endBlock      = nextBlock;
+      scansMap.scansInfo[scanIndex].endIndex      = j;
+    }
+    else if (op == GREATER_THAN_OR_EQUAL){
+
+      scansMap.scansInfo[scanIndex].recordBlock   = nextBlock;
+      scansMap.scansInfo[scanIndex].recordIndex   = i;
+      scansMap.scansInfo[scanIndex].endBlock      = nextBlock;
+      scansMap.scansInfo[scanIndex].endIndex      = BF_BLOCK_SIZE;
+    }
+    else if (op = NOT_EQUAL){
+      
+      scansMap.scansInfo[scanIndex].recordBlock   = firstBlock;
+      scansMap.scansInfo[scanIndex].recordIndex   = 0;
+      scansMap.scansInfo[scanIndex].endBlock      = nextBlock;
+      scansMap.scansInfo[scanIndex].endIndex      = j-1;
+    }
+    else if(op = LESS_THAN_OR_EQUAL){
+      
+      scansMap.scansInfo[scanIndex].recordBlock   = firstBlock;
+      scansMap.scansInfo[scanIndex].recordIndex   = 0;
+      scansMap.scansInfo[scanIndex].endBlock      = nextBlock;
+      scansMap.scansInfo[scanIndex].endIndex      = j;
     }
     
+    
 
-  } else if ( op == GREATER_THAN){
+  } else if ( op == GREATER_THAN ){
     for (i = 0; i < numOfRecords; i++){
       memcpy(key, getDBlockData(filesMap.filesInfo[fileDesc], data, i), keyLength);
       if (compare(filesMap.filesInfo[fileDesc], key, value) > 0)
@@ -523,7 +557,40 @@ printf("+AM_OpenIndexScan: just got called.\n");
       scansMap.scansInfo[scanIndex].recordBlock   = nextBlock; 
       scansMap.scansInfo[scanIndex].recordIndex   = i;
     }
+    scansMap.scansInfo[scanIndex].endBlock = nextBlock;
+    scansMap.scansInfo[scanIndex].endIndex = BF_BLOCK_SIZE;
     
+  } else if ( op == LESS_THAN ){
+
+    for (i = 0; i < numOfRecords; i++){
+      memcpy(key, getDBlockData(filesMap.filesInfo[fileDesc], data, i), keyLength);
+      if (compare(filesMap.filesInfo[fileDesc], key, value) == 0)
+        break;
+    }
+    //less index = equal - 1
+    //i--;
+    // Less wastn found in this block
+    if(i == 0){
+    ////**** Impossible to find prev block ****////
+    printf(" E DEN KANO KAI PTYXIAKH\n\n");
+      // //Get next block
+      // memcpy(&nextBlock, data+sizeof(char)+sizeof(int), sizeof(int));
+      // if(nextBlock==-1){
+      //   AM_errno = AME_EOF; // If no other block is avaible it is end of file                    
+      // }
+      // scansMap.scansInfo[scanIndex].foundBlock    = nextBlock;
+      // scansMap.scansInfo[scanIndex].foundIndex    = 0;
+      // scansMap.scansInfo[scanIndex].recordBlock   = nextBlock; 
+      // scansMap.scansInfo[scanIndex].recordIndex   = 0;
+    }
+    else{
+      scansMap.scansInfo[scanIndex].foundBlock    = nextBlock;
+      scansMap.scansInfo[scanIndex].foundIndex    = i;
+      scansMap.scansInfo[scanIndex].recordBlock   = firstBlock; 
+      scansMap.scansInfo[scanIndex].recordIndex   = 0;
+      scansMap.scansInfo[scanIndex].endBlock      = nextBlock;
+      scansMap.scansInfo[scanIndex].endIndex      = i;
+    }
   }
   
 
@@ -566,22 +633,23 @@ printf("+AM_FindNextEntry: just got called.\n");
   int nextBlock;
   char *data;
 
-  if( endIndex == recordIndex && endBlock == recordBlock){
-    AM_errno = AME_EOF;
-    printf("EOF\n");
-    return NULL;
-  }
   CALL_BF_BLOCK_INIT(block)
   char *key = malloc(keyLength);
 
-  if( op == EQUAL ){
-    CALL_BF(BF_GetBlock(fileId, foundBlock, block))
+  if( op != NOT_EQUAL ){
+    ////////////////////////
+    if( endIndex == recordIndex && endBlock == recordBlock){
+      AM_errno = AME_EOF;
+      printf("EOF\n");
+      return NULL;
+    }
+    ////////////////////
+    CALL_BF(BF_GetBlock(fileId, recordBlock, block))
     data = BF_Block_GetData(block);
     memcpy(&numOfRecords, data+sizeof(char), sizeof(int));
 
-    if(numOfRecords < recordIndex){
+    if(numOfRecords < recordIndex+1){
       memcpy(&nextBlock, data+sizeof(char)+sizeof(int), sizeof(int));
-
       if(nextBlock == -1){
         AM_errno = AME_EOF;
         free(key);
@@ -593,12 +661,76 @@ printf("+AM_FindNextEntry: just got called.\n");
       CALL_BF(BF_UnpinBlock(block))
       CALL_BF(BF_GetBlock(fileId, nextBlock, block))
       data = BF_Block_GetData(block);
+      memcpy(&numOfRecords, data+sizeof(char), sizeof(int));
+      printf("next block-> %d data: %d\n",nextBlock,*(int*)(data+sizeof(char)+sizeof(int)));
       scansMap.scansInfo[scanDesc].recordBlock = nextBlock;
-      scansMap.scansInfo[scanDesc].recordBlock = 0;
+      scansMap.scansInfo[scanDesc].recordIndex = 0;
+      recordIndex = 0;
+      recordBlock = nextBlock;
     }
 
     memcpy(key, getDBlockData(filesMap.filesInfo[fileDesc], data, recordIndex), keyLength);
-    printf("EQUAL SCAN KEY= %s\n",key);
+    printf("EQUAL SCAN KEY= %s  || INDEX= %d || NYUMofrecords= %d  ||recirdBlock= %d\n",
+    key,recordIndex,numOfRecords,recordBlock);
+
+    scansMap.scansInfo[scanDesc].recordIndex++;
+    free(key);
+    CALL_BF_BLOCK_DESTROY(block)
+    return data+keyLength;
+  }
+  else{
+    int skipBlock = 0;
+
+    CALL_BF(BF_GetBlock(fileId, recordBlock, block))
+    data = BF_Block_GetData(block);
+    memcpy(&numOfRecords, data+sizeof(char), sizeof(int));
+
+  // if(numOfRecords > recordIndex)
+    while(recordBlock == foundBlock && (recordIndex >= foundIndex && recordIndex <= endIndex)){
+      recordIndex++;
+      scansMap.scansInfo[scanDesc].recordIndex++;
+    }
+
+    if(numOfRecords < recordIndex+1){
+      memcpy(&nextBlock, data+sizeof(char)+sizeof(int), sizeof(int));
+      if(nextBlock == -1){
+        AM_errno = AME_EOF;
+        free(key);
+        CALL_BF_BLOCK_DESTROY(block)
+        printf("EOF\n");
+        return NULL;
+      }
+
+      CALL_BF(BF_UnpinBlock(block))
+      CALL_BF(BF_GetBlock(fileId, nextBlock, block))
+      data = BF_Block_GetData(block);
+      memcpy(&numOfRecords, data+sizeof(char), sizeof(int));
+      // printf("next block-> %d data: %d\n",nextBlock,*(int*)(data+sizeof(char)+sizeof(int)));
+      scansMap.scansInfo[scanDesc].recordBlock = nextBlock;
+      scansMap.scansInfo[scanDesc].recordIndex = 0;
+      recordIndex = 0;
+      recordBlock = nextBlock;
+    }
+
+    // printf("\nrecordIndex----->>>>>> %d found: %d block: %d\n",recordIndex, endIndex, foundBlock);
+////////////////
+    //Not equal routine
+////////////////////
+    while(recordBlock == foundBlock && (recordIndex >= foundIndex && recordIndex <= endIndex)){
+      recordIndex++;
+      scansMap.scansInfo[scanDesc].recordIndex++;
+      if(numOfRecords < recordIndex+1){
+        AM_errno = AME_EOF;
+        free(key);
+        CALL_BF_BLOCK_DESTROY(block)
+        printf("EOF\n");
+        return NULL;
+      }
+    }
+
+    memcpy(key, getDBlockData(filesMap.filesInfo[fileDesc], data, recordIndex), keyLength);
+    printf("EQUAL SCAN KEY= %s  || INDEX= %d || NYUMofrecords= %d  ||recirdBlock= %d\n",
+    key,recordIndex,numOfRecords,recordBlock);
 
     scansMap.scansInfo[scanDesc].recordIndex++;
     free(key);

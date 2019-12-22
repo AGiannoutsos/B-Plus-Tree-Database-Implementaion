@@ -63,6 +63,7 @@ typedef struct FilesInfo
 	int fileId;
     int openedScans;
     int root;
+    int firstBlock;
     int maxKeysPerBlock;
     int maxRecordsPerBlock;
 } FilesInfo;
